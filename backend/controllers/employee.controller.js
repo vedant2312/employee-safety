@@ -169,9 +169,9 @@ export const updateEmployee = async (req, res) => {
     // Medical info and emergency contacts
     if (medicalInfo) {
       employee.medicalInfo = {
-        critical: medicalInfo.critical || employee.medicalInfo.critical,
-        important: medicalInfo.important || employee.medicalInfo.important,
-        context: medicalInfo.context || employee.medicalInfo.context
+        critical: medicalInfo.critical || employee.medicalInfo?.critical || {},
+        important: medicalInfo.important || employee.medicalInfo?.important || {},
+        context: medicalInfo.context || employee.medicalInfo?.context || {}
       };
     }
 
@@ -265,10 +265,11 @@ export const updateMyProfile = async (req, res) => {
     if (profilePhoto) employee.profilePhoto = profilePhoto;
 
     if (medicalInfo) {
+      // Preserve existing context or use empty object
       employee.medicalInfo = {
-        critical: medicalInfo.critical || employee.medicalInfo.critical,
-        important: medicalInfo.important || employee.medicalInfo.important,
-        context: medicalInfo.context || employee.medicalInfo.context
+        critical: medicalInfo.critical || employee.medicalInfo?.critical || {},
+        important: medicalInfo.important || employee.medicalInfo?.important || {},
+        context: medicalInfo.context || employee.medicalInfo?.context || {}
       };
     }
 

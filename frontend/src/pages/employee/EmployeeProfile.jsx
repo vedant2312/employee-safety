@@ -118,6 +118,7 @@ const EmployeeProfile = () => {
           important: {
             currentMedications,
           },
+          context: {} // Include empty context object
         },
       };
 
@@ -126,7 +127,8 @@ const EmployeeProfile = () => {
       setEditing(false);
       alert('Profile updated successfully!');
     } catch (error) {
-      alert('Failed to update profile');
+      console.error('Error updating profile:', error);
+      alert('Failed to update profile: ' + (error.response?.data?.message || 'Unknown error'));
     } finally {
       setSaving(false);
     }

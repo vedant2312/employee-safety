@@ -139,12 +139,14 @@ const EditEmployee = () => {
           important: {
             currentMedications,
           },
+          context: {} // Include empty context object
         },
       };
 
       await api.put(`/employees/${id}`, payload);
       navigate('/employees');
     } catch (error) {
+      console.error('Error updating employee:', error);
       setError(error.response?.data?.message || 'Failed to update employee');
     } finally {
       setSaving(false);

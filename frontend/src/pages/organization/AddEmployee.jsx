@@ -108,12 +108,14 @@ const AddEmployee = () => {
           important: {
             currentMedications,
           },
+          context: {} // Include empty context object
         };
       }
 
       await api.post('/employees', payload);
       navigate('/employees');
     } catch (error) {
+      console.error('Error creating employee:', error);
       setError(error.response?.data?.message || 'Failed to create employee');
     } finally {
       setLoading(false);
