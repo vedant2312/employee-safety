@@ -14,10 +14,6 @@ import { protect, isOrganization, isEmployee } from '../middlewares/auth.middlew
 
 const router = express.Router();
 
-// Employee self-service routes (must come first)
-router.get('/profile/me', protect, isEmployee, getMyProfile);
-router.put('/profile/me', protect, isEmployee, updateMyProfile);
-
 // Organization routes (protected)
 router.post('/', protect, isOrganization, createEmployee);
 router.get('/', protect, isOrganization, getEmployees);
@@ -28,5 +24,9 @@ router.delete('/:id', protect, isOrganization, deleteEmployee);
 // QR code routes
 router.get('/:id/qr', protect, isOrganization, generateQRCode);
 router.post('/:id/regenerate-qr', protect, isOrganization, regenerateQRToken);
+
+// Employee self-service routes
+router.get('/profile/me', protect, isEmployee, getMyProfile);
+router.put('/profile/me', protect, isEmployee, updateMyProfile);
 
 export default router;

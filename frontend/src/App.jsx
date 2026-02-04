@@ -12,7 +12,6 @@ import AddEmployee from './pages/organization/AddEmployee';
 import EditEmployee from './pages/organization/EditEmployee';
 import EmployeeQR from './pages/organization/EmployeeQR';
 import IncidentsList from './pages/organization/IncidentsList';
-import Settings from './pages/organization/Settings';
 import EmergencyScanner from './pages/emergency/EmergencyScanner';
 import EmployeeProfile from './pages/employee/EmployeeProfile';
 
@@ -24,7 +23,7 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-
+          
           {/* Emergency Scanner - Public */}
           <Route path="/emergency/:qrToken" element={<EmergencyScanner />} />
 
@@ -39,7 +38,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-
+          
           <Route
             path="/employees"
             element={
@@ -50,7 +49,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-
+          
           <Route
             path="/employees/add"
             element={
@@ -61,7 +60,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-
+          
           <Route
             path="/employees/:id/edit"
             element={
@@ -72,7 +71,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-
+          
           <Route
             path="/employees/:id/qr"
             element={
@@ -83,24 +82,13 @@ function App() {
               </ProtectedRoute>
             }
           />
-
+          
           <Route
             path="/incidents"
             element={
               <ProtectedRoute requireOrganization>
                 <OrganizationLayout>
                   <IncidentsList />
-                </OrganizationLayout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute requireOrganization>
-                <OrganizationLayout>
-                  <Settings />
                 </OrganizationLayout>
               </ProtectedRoute>
             }

@@ -11,7 +11,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     const storedToken = localStorage.getItem('token');
-
+    
     if (storedUser && storedToken) {
       setUser(JSON.parse(storedUser));
     }
@@ -28,7 +28,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       const { token, ...userData } = response.data;
-
+      
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       const { token, ...userData } = response.data;
-
+      
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
@@ -73,23 +73,11 @@ export const AuthProvider = ({ children }) => {
         password,
       });
 
-      // The backend returns the employee's job title in a field also called
-      // "role" (e.g. "Software Developer").  We need a separate field to
-      // mark this user as an employee for the frontend's auth checks, so
-      // pull the job title out as "jobRole" and set role = 'employee'.
-      const { token, role: jobRole, ...rest } = response.data;
-
-      const userData = {
-        ...rest,
-        jobRole,            // keep the job title under a different key
-        role: 'employee',   // auth-role marker used by isEmployee / isOrganization
-      };
-
-      // Write the COMPLETE object (including role:'employee') to storage
-      // so it survives a page refresh.
+      const { token, ...userData } = response.data;
+      
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
+      setUser({ ...userData, role: 'employee' });
 
       return { success: true };
     } catch (error) {

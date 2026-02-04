@@ -1,5 +1,5 @@
-import Employee from "../models/employee.model.js";
-import Incident from "../models/incident.model.js";
+import Employee from '../models/employee.model.js';
+import Incident from '../models/incident.model.js';
 
 // @desc    Get employee data by QR token (public - no auth)
 // @route   GET /api/emergency/:qrToken

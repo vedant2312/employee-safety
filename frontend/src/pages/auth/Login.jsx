@@ -8,7 +8,7 @@ import { Shield } from 'lucide-react';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [userType, setUserType] = useState('organization');
+  const [userType, setUserType] = useState('organization'); // organization or employee
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -20,29 +20,23 @@ const Login = () => {
     setError('');
     setLoading(true);
 
-    try {
-      const result =
-        userType === 'organization'
-          ? await login(email, password)
-          : await loginEmployee(email, password);
+    const result = userType === 'organization' 
+      ? await login(email, password)
+      : await loginEmployee(email, password);
 
-      if (result.success) {
-        navigate(userType === 'organization' ? '/dashboard' : '/employee/profile');
-      } else {
-        setError(result.message);
-      }
-    } catch (err) {
-      // safety net — should not normally be reached
-      setError('An unexpected error occurred. Please try again.');
-    } finally {
-      setLoading(false);
+    if (result.success) {
+      navigate(userType === 'organization' ? '/dashboard' : '/employee/profile');
+    } else {
+      setError(result.message);
     }
+
+    setLoading(false);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
-        {/* Logo / Header */}
+        {/* Logo/Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-full mb-4">
             <Shield className="w-8 h-8 text-white" />
@@ -51,13 +45,7 @@ const Login = () => {
           <p className="text-gray-600 mt-2">Sign in to your account</p>
         </div>
 
-        {/* User-type toggle
-            ─────────────────────────────────────────────────────
-            IMPORTANT: both buttons MUST have type="button".
-            Without it, any <button> inside a <form> defaults to
-            type="submit", so clicking the toggle would submit the
-            form immediately — before useState has updated userType.
-            ───────────────────────────────────────────────────── */}
+        {/* User Type Toggle */}
         <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-lg">
           <button
             type="button"
@@ -83,14 +71,14 @@ const Login = () => {
           </button>
         </div>
 
-        {/* Error */}
+        {/* Error Message */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
             {error}
           </div>
         )}
 
-        {/* Form */}
+        {/* Login Form */}
         <form onSubmit={handleSubmit}>
           <Input
             label="Email"
@@ -121,7 +109,7 @@ const Login = () => {
           </Button>
         </form>
 
-        {/* Register link — only for organizations */}
+        {/* Register Link (only for organizations) */}
         {userType === 'organization' && (
           <p className="text-center mt-6 text-gray-600">
             Don't have an account?{' '}

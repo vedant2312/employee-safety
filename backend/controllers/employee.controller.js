@@ -88,8 +88,8 @@ export const getEmployees = async (req, res) => {
     const organizationId = req.user.id;
 
     const employees = await Employee.find({ organizationId })
-      .select('-password')
-      .sort({ createdAt: -1 });
+      .select('-password') // Exclude password field
+      .sort({ createdAt: -1 }); // Latest first
 
     res.json({
       count: employees.length,
@@ -112,6 +112,7 @@ export const getEmployeeById = async (req, res) => {
       return res.status(404).json({ message: 'Employee not found' });
     }
 
+    // Check if employee belongs to this organization
     if (employee.organizationId.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Access denied' });
     }
@@ -135,15 +136,16 @@ export const updateEmployee = async (req, res) => {
     }
 
     // Check authorization
-    const isOrganization = req.user.role === 'organization' &&
+    const isOrganization = req.user.role === 'organization' && 
                           employee.organizationId.toString() === req.user.id;
-    const isOwnProfile = req.user.role === 'employee' &&
+    const isOwnProfile = req.user.role === 'employee' && 
                         employee._id.toString() === req.user.id;
 
     if (!isOrganization && !isOwnProfile) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
+    // Update allowed fields
     const {
       name,
       department,
@@ -158,24 +160,18 @@ export const updateEmployee = async (req, res) => {
     if (department) employee.department = department;
     if (role) employee.role = role;
     if (profilePhoto) employee.profilePhoto = profilePhoto;
-
+    
     // Only organization can change status
     if (status && isOrganization) {
       employee.status = status;
     }
 
-    // ─── medicalInfo update ──────────────────────────────────────
-    // Each sub-key (critical / important / context) falls back first
-    // to what the request sent, then to what is already in the DB,
-    // and finally to an empty object {}.  The empty-object fallback
-    // is critical: Mongoose cannot cast `undefined` to an Object
-    // subdocument and will throw a ValidationError if it receives one.
-    // ─────────────────────────────────────────────────────────────
+    // Medical info and emergency contacts
     if (medicalInfo) {
       employee.medicalInfo = {
-        critical:  medicalInfo.critical  || employee.medicalInfo?.critical  || {},
-        important: medicalInfo.important || employee.medicalInfo?.important || {},
-        context:   medicalInfo.context   || employee.medicalInfo?.context   || {}
+        critical: medicalInfo.critical || employee.medicalInfo.critical,
+        important: medicalInfo.important || employee.medicalInfo.important,
+        context: medicalInfo.context || employee.medicalInfo.context
       };
     }
 
@@ -200,7 +196,7 @@ export const updateEmployee = async (req, res) => {
   }
 };
 
-// @desc    Delete employee (soft delete)
+// @desc    Delete employee
 // @route   DELETE /api/employees/:id
 // @access  Private (Organization only)
 export const deleteEmployee = async (req, res) => {
@@ -211,10 +207,12 @@ export const deleteEmployee = async (req, res) => {
       return res.status(404).json({ message: 'Employee not found' });
     }
 
+    // Check if employee belongs to this organization
     if (employee.organizationId.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
+    // Soft delete - change status to inactive
     employee.status = 'inactive';
     employee.lastUpdated = new Date();
     await employee.save();
@@ -257,6 +255,7 @@ export const updateMyProfile = async (req, res) => {
       return res.status(404).json({ message: 'Employee not found' });
     }
 
+    // Employees can only update certain fields
     const {
       profilePhoto,
       medicalInfo,
@@ -265,12 +264,11 @@ export const updateMyProfile = async (req, res) => {
 
     if (profilePhoto) employee.profilePhoto = profilePhoto;
 
-    // Same safe fallback pattern as updateEmployee above
     if (medicalInfo) {
       employee.medicalInfo = {
-        critical:  medicalInfo.critical  || employee.medicalInfo?.critical  || {},
-        important: medicalInfo.important || employee.medicalInfo?.important || {},
-        context:   medicalInfo.context   || employee.medicalInfo?.context   || {}
+        critical: medicalInfo.critical || employee.medicalInfo.critical,
+        important: medicalInfo.important || employee.medicalInfo.important,
+        context: medicalInfo.context || employee.medicalInfo.context
       };
     }
 
@@ -305,12 +303,15 @@ export const generateQRCode = async (req, res) => {
       return res.status(404).json({ message: 'Employee not found' });
     }
 
+    // Check if employee belongs to this organization
     if (employee.organizationId.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
+    // QR code URL format: http://yourfrontend.com/emergency/{qrToken}
     const qrUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/emergency/${employee.qrToken}`;
 
+    // Generate QR code as data URL (base64 image)
     const qrCodeDataUrl = await QRCode.toDataURL(qrUrl, {
       width: 300,
       margin: 2,
@@ -323,7 +324,7 @@ export const generateQRCode = async (req, res) => {
     res.json({
       qrToken: employee.qrToken,
       qrUrl,
-      qrCodeImage: qrCodeDataUrl
+      qrCodeImage: qrCodeDataUrl // This is a base64 image
     });
   } catch (error) {
     console.error(error);
@@ -331,7 +332,7 @@ export const generateQRCode = async (req, res) => {
   }
 };
 
-// @desc    Regenerate QR token for employee
+// @desc    Regenerate QR token
 // @route   POST /api/employees/:id/regenerate-qr
 // @access  Private (Organization only)
 export const regenerateQRToken = async (req, res) => {
@@ -342,10 +343,12 @@ export const regenerateQRToken = async (req, res) => {
       return res.status(404).json({ message: 'Employee not found' });
     }
 
+    // Check if employee belongs to this organization
     if (employee.organizationId.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
+    // Generate new QR token
     employee.qrToken = generateQRToken(employee.employeeId, employee.organizationId);
     employee.qrGeneratedAt = new Date();
     await employee.save();
