@@ -363,3 +363,43 @@ export const regenerateQRToken = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+// @desc    Upload employee photo
+// @route   POST /api/employees/:id/photo
+// @access  Private (Organization or Employee themselves)
+export const uploadPhoto = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Please upload a file' });
+    }
+
+    const employee = await Employee.findById(req.params.id);
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    // Check authorization
+    const isOrganization = req.user.role === 'organization' && 
+                          employee.organizationId.toString() === req.user.id;
+    const isOwnProfile = req.user.role === 'employee' && 
+                        employee._id.toString() === req.user.id;
+
+    if (!isOrganization && !isOwnProfile) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Update profile photo URL
+    const photoUrl = `/uploads/${req.file.filename}`;
+    employee.profilePhoto = photoUrl;
+    await employee.save();
+
+    res.json({
+      message: 'Photo uploaded successfully',
+      photoUrl
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};

@@ -1,11 +1,18 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import connectDB from './config/db.js';
 import authRoutes from './routes/auth.route.js';
 import employeeRoutes from './routes/employee.route.js';
 import emergencyRoutes from './routes/emergency.route.js';
 import dashboardRoutes from './routes/dashboard.route.js';
+import exportRoutes from './routes/export.route.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Load environment variables
 dotenv.config();
@@ -21,11 +28,15 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files (uploaded photos)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/emergency', emergencyRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/export', exportRoutes);
 
 // Test route
 app.get('/api/test', (req, res) => {

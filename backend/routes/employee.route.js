@@ -8,9 +8,11 @@ import {
   getMyProfile,
   updateMyProfile,
   generateQRCode,
-  regenerateQRToken
+  regenerateQRToken,
+  uploadPhoto
 } from '../controllers/employee.controller.js';
 import { protect, isOrganization, isEmployee } from '../middlewares/auth.middleware.js';
+import upload from '../utils/upload.js';
 
 const router = express.Router();
 
@@ -20,6 +22,9 @@ router.get('/', protect, isOrganization, getEmployees);
 router.get('/:id', protect, isOrganization, getEmployeeById);
 router.put('/:id', protect, updateEmployee); // Both org and employee can update
 router.delete('/:id', protect, isOrganization, deleteEmployee);
+
+// Photo upload
+router.post('/:id/photo', protect, upload.single('photo'), uploadPhoto);
 
 // QR code routes
 router.get('/:id/qr', protect, isOrganization, generateQRCode);
