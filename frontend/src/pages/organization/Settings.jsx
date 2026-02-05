@@ -1,236 +1,115 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import Card from '../../components/common/Card';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { Shield, AlertTriangle, X, Check } from 'lucide-react';
+import { Building2, Mail, Shield, Save } from 'lucide-react';
 
-// ─── small reusable toast that lives inside this page ───────────
-const InlineToast = ({ message, type, onClose }) => {
-  useEffect(() => {
-    const timer = setTimeout(onClose, 3000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  return (
-    <div
-      className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-lg shadow-lg text-white text-sm font-medium
-        ${type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}
-    >
-      {type === 'success' ? <Check className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-      <span>{message}</span>
-      <button onClick={onClose} className="ml-2 hover:opacity-70">
-        <X className="w-4 h-4" />
-      </button>
-    </div>
-  );
-};
-
-// ─── confirmation modal for dangerous actions ──────────────────
-const DangerModal = ({ isOpen, onClose, onConfirm }) => {
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  if (!isOpen) return null;
-
-  const handleConfirm = async () => {
-    setError('');
-    setLoading(true);
-    const result = await onConfirm(password);
-    if (result.error) {
-      setError(result.error);
-    }
-    setLoading(false);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* backdrop */}
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-
-      {/* modal */}
-      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-        {/* red top strip */}
-        <div className="h-2 bg-red-600" />
-
-        <div className="p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-              <AlertTriangle className="w-5 h-5 text-red-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-gray-900">Delete Organization</h3>
-              <p className="text-sm text-gray-500">This action cannot be undone</p>
-            </div>
-          </div>
-
-          <p className="text-sm text-gray-700 mb-5">
-            Deleting your organization will permanently remove all employees, QR codes,
-            and incident records. Type your password below to confirm.
-          </p>
-
-          <Input
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
-            error={error}
-          />
-
-          <div className="flex gap-3 mt-6">
-            <Button
-              onClick={handleConfirm}
-              variant="danger"
-              disabled={loading || !password}
-              className="flex-1"
-            >
-              {loading ? 'Deleting…' : 'Delete Organization'}
-            </Button>
-            <Button onClick={onClose} variant="secondary">
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── main Settings page ─────────────────────────────────────────
 const Settings = () => {
-  const { logout } = useAuth();
-  const navigate = useNavigate();
-
-  // toast
-  const [toast, setToast] = useState(null); // { message, type }
-  const showToast = (message, type = 'success') => setToast({ message, type });
-
-  // org data
-  const [org, setOrg] = useState(null);
-  const [stats, setStats] = useState({});
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-
-  // general form
-  const [orgName, setOrgName] = useState('');
-  const [generalLoading, setGeneralLoading] = useState(false);
-
-  // password form
-  const [passwordForm, setPasswordForm] = useState({
+  const [saving, setSaving] = useState(false);
+  const [organization, setOrganization] = useState(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
     currentPassword: '',
     newPassword: '',
-    confirmPassword: '',
+    confirmPassword: ''
   });
-  const [passwordLoading, setPasswordLoading] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  // SOS settings
-  const [sosSettings, setSosSettings] = useState({
-    sosCascade: true,
-    requirePhotoUpdate: false,
-  });
-  const [sosLoading, setSosLoading] = useState(false);
-
-  // danger zone modal
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-
-  // ── fetch on mount ──
   useEffect(() => {
     fetchOrganization();
   }, []);
 
   const fetchOrganization = async () => {
     try {
-      const res = await api.get('/organization/profile');
-      setOrg(res.data.organization);
-      setStats(res.data.stats);
-      setOrgName(res.data.organization.name);
-      setSosSettings({
-        sosCascade: res.data.organization.settings?.sosCascade ?? true,
-        requirePhotoUpdate: res.data.organization.settings?.requirePhotoUpdate ?? false,
+      const response = await api.get('/organization/profile');
+      setOrganization(response.data);
+      setFormData({
+        name: response.data.name,
+        email: response.data.email,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
       });
-    } catch (err) {
-      console.error(err);
-      showToast('Failed to load settings', 'error');
+    } catch (error) {
+      console.error('Error fetching organization:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // ── general update ──
-  const handleGeneralSave = async () => {
-    setGeneralLoading(true);
-    try {
-      await api.put('/organization/settings', { name: orgName });
-      showToast('Organization name updated');
-    } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to update', 'error');
-    } finally {
-      setGeneralLoading(false);
-    }
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
   };
 
-  // ── password update ──
-  const handlePasswordSave = async () => {
-    setPasswordError('');
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setSaving(true);
 
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordError('New passwords do not match');
-      return;
-    }
-    if (passwordForm.newPassword.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
-      return;
-    }
-
-    setPasswordLoading(true);
     try {
-      await api.put('/organization/password', {
-        currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword,
+      await api.put('/organization/profile', {
+        name: formData.name,
+        email: formData.email
       });
-      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      showToast('Password updated successfully');
-    } catch (err) {
-      setPasswordError(err.response?.data?.message || 'Failed to update password');
+      
+      setSuccess('Profile updated successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      setError(error.response?.data?.message || 'Failed to update profile');
     } finally {
-      setPasswordLoading(false);
+      setSaving(false);
     }
   };
 
-  // ── SOS settings update ──
-  const handleSosSave = async () => {
-    setSosLoading(true);
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (formData.newPassword !== formData.confirmPassword) {
+      setError('New passwords do not match');
+      return;
+    }
+
+    if (formData.newPassword.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    setSaving(true);
+
     try {
-      await api.put('/organization/settings', { settings: sosSettings });
-      showToast('SOS preferences updated');
-    } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to update', 'error');
+      await api.put('/organization/change-password', {
+        currentPassword: formData.currentPassword,
+        newPassword: formData.newPassword
+      });
+      
+      setSuccess('Password changed successfully!');
+      setFormData({
+        ...formData,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      setError(error.response?.data?.message || 'Failed to change password');
     } finally {
-      setSosLoading(false);
+      setSaving(false);
     }
   };
 
-  // ── delete account ──
-  const handleDeleteAccount = async (password) => {
-    try {
-      await api.delete('/organization/account', { data: { password } });
-      showToast('Organization deleted');
-      setTimeout(() => {
-        logout();
-        navigate('/login');
-      }, 1500);
-      return {};
-    } catch (err) {
-      return { error: err.response?.data?.message || 'Failed to delete account' };
-    }
-  };
-
-  // ── loading screen ──
   if (loading) {
     return (
       <div className="flex justify-center items-center h-96">
@@ -239,167 +118,148 @@ const Settings = () => {
     );
   }
 
-  // ── render ──
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* toast */}
-      {toast && (
-        <InlineToast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
+    <div>
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">Settings</h1>
+
+      {/* Success Message */}
+      {success && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
+          {success}
+        </div>
       )}
 
-      {/* delete modal */}
-      <DangerModal
-        isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        onConfirm={handleDeleteAccount}
-      />
-
-      {/* page header */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-primary-600 flex items-center justify-center">
-          <Shield className="w-5 h-5 text-white" />
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+          {error}
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Settings</h1>
-          <p className="text-sm text-gray-500">Manage your organization account</p>
-        </div>
-      </div>
+      )}
 
-      {/* ── 1. General ── */}
-      <Card title="General">
-        <div className="flex items-center gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
-          <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
-            <Shield className="w-6 h-6 text-primary-600" />
+      {/* Organization Profile */}
+      <Card title="Organization Profile" className="mb-6">
+        <form onSubmit={handleUpdateProfile}>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center">
+                <Building2 className="w-8 h-8 text-primary-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-800">{organization?.name}</p>
+                <p className="text-sm text-gray-600">Organization ID: {organization?._id}</p>
+              </div>
+            </div>
+
+            <Input
+              label="Organization Name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="TechCorp Inc."
+              required
+            />
+
+            <Input
+              label="Email"
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="admin@techcorp.com"
+              required
+            />
+
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Shield className="w-4 h-4" />
+              <span>Plan: {organization?.plan || 'Free'}</span>
+            </div>
+
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={saving}
+              className="flex items-center gap-2"
+            >
+              <Save className="w-4 h-4" />
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </form>
+      </Card>
+
+      {/* Change Password */}
+      <Card title="Change Password">
+        <form onSubmit={handleChangePassword}>
+          <div className="space-y-4">
+            <Input
+              label="Current Password"
+              type="password"
+              name="currentPassword"
+              value={formData.currentPassword}
+              onChange={handleChange}
+              placeholder="Enter current password"
+              required
+            />
+
+            <Input
+              label="New Password"
+              type="password"
+              name="newPassword"
+              value={formData.newPassword}
+              onChange={handleChange}
+              placeholder="Enter new password (min 6 characters)"
+              required
+            />
+
+            <Input
+              label="Confirm New Password"
+              type="password"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              placeholder="Confirm new password"
+              required
+            />
+
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={saving}
+              className="flex items-center gap-2"
+            >
+              <Shield className="w-4 h-4" />
+              {saving ? 'Changing...' : 'Change Password'}
+            </Button>
+          </div>
+        </form>
+      </Card>
+
+      {/* Account Statistics */}
+      <Card title="Account Statistics" className="mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <p className="text-sm text-gray-600">Member Since</p>
+            <p className="font-semibold text-gray-800">
+              {new Date(organization?.createdAt).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </p>
           </div>
           <div>
-            <p className="font-semibold text-gray-800">{org?.name}</p>
-            <p className="text-sm text-gray-500">{org?.email}</p>
+            <p className="text-sm text-gray-600">Total Employees</p>
+            <p className="font-semibold text-gray-800">
+              {organization?.employeeCount || 0}
+            </p>
           </div>
-          <div className="ml-auto flex gap-6 text-center">
-            <div>
-              <p className="text-xl font-bold text-primary-600">{stats.totalEmployees || 0}</p>
-              <p className="text-xs text-gray-500">Employees</p>
-            </div>
-            <div>
-              <p className="text-xl font-bold text-red-500">{stats.totalIncidents || 0}</p>
-              <p className="text-xs text-gray-500">Incidents</p>
-            </div>
+          <div>
+            <p className="text-sm text-gray-600">Total Incidents</p>
+            <p className="font-semibold text-gray-800">
+              {organization?.incidentCount || 0}
+            </p>
           </div>
         </div>
-
-        <Input
-          label="Organization Name"
-          value={orgName}
-          onChange={(e) => setOrgName(e.target.value)}
-          placeholder="Your organization name"
-        />
-
-        <div className="flex items-center gap-3 mt-2">
-          <Button onClick={handleGeneralSave} variant="primary" disabled={generalLoading}>
-            {generalLoading ? 'Saving…' : 'Save Name'}
-          </Button>
-          <span className="text-xs text-gray-400">Email cannot be changed</span>
-        </div>
-      </Card>
-
-      {/* ── 2. Password ── */}
-      <Card title="Change Password">
-        <Input
-          label="Current Password"
-          type="password"
-          value={passwordForm.currentPassword}
-          onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-          placeholder="Enter current password"
-        />
-        <Input
-          label="New Password"
-          type="password"
-          value={passwordForm.newPassword}
-          onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-          placeholder="At least 6 characters"
-        />
-        <Input
-          label="Confirm New Password"
-          type="password"
-          value={passwordForm.confirmPassword}
-          onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-          placeholder="Re-enter new password"
-          error={passwordError}
-        />
-        <Button
-          onClick={handlePasswordSave}
-          variant="primary"
-          disabled={passwordLoading || !passwordForm.currentPassword || !passwordForm.newPassword}
-          className="mt-2"
-        >
-          {passwordLoading ? 'Updating…' : 'Update Password'}
-        </Button>
-      </Card>
-
-      {/* ── 3. SOS Preferences ── */}
-      <Card title="SOS Preferences">
-        <p className="text-sm text-gray-600 mb-5">
-          Configure how emergency alerts behave for your organization.
-        </p>
-
-        {/* toggle row helper */}
-        {[
-          {
-            key: 'sosCascade',
-            title: 'Cascade Alerts',
-            desc: 'Send SOS to all emergency contacts in priority order, not just the first one.',
-          },
-          {
-            key: 'requirePhotoUpdate',
-            title: 'Require Employee Photos',
-            desc: 'Remind employees to upload a profile photo so responders can identify them.',
-          },
-        ].map(({ key, title, desc }) => (
-          <div key={key} className="flex items-start justify-between mb-5 last:mb-0">
-            <div className="pr-4">
-              <p className="font-medium text-gray-800">{title}</p>
-              <p className="text-sm text-gray-500">{desc}</p>
-            </div>
-            {/* custom toggle */}
-            <button
-              type="button"
-              onClick={() => setSosSettings((prev) => ({ ...prev, [key]: !prev[key] }))}
-              className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0
-                ${sosSettings[key] ? 'bg-primary-600' : 'bg-gray-300'}`}
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200
-                  ${sosSettings[key] ? 'translate-x-5' : 'translate-x-0'}`}
-              />
-            </button>
-          </div>
-        ))}
-
-        <Button onClick={handleSosSave} variant="primary" disabled={sosLoading} className="mt-4">
-          {sosLoading ? 'Saving…' : 'Save Preferences'}
-        </Button>
-      </Card>
-
-      {/* ── 4. Danger Zone ── */}
-      <Card className="border-2 border-red-200">
-        <div className="flex items-center gap-2 mb-3">
-          <AlertTriangle className="w-5 h-5 text-red-600" />
-          <h3 className="text-base font-bold text-red-700">Danger Zone</h3>
-        </div>
-        <p className="text-sm text-gray-600 mb-4">
-          Once you delete your organization, all employees, QR codes, and incident
-          records will be permanently removed. This action cannot be undone.
-        </p>
-        <Button
-          onClick={() => setShowDeleteModal(true)}
-          variant="danger"
-        >
-          Delete Organization Account
-        </Button>
       </Card>
     </div>
   );

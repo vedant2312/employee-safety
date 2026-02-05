@@ -14,6 +14,8 @@ import EmployeeQR from './pages/organization/EmployeeQR';
 import IncidentsList from './pages/organization/IncidentsList';
 import EmergencyScanner from './pages/emergency/EmergencyScanner';
 import EmployeeProfile from './pages/employee/EmployeeProfile';
+import Settings from './pages/organization/Settings';
+
 
 function App() {
   return (
@@ -106,6 +108,17 @@ function App() {
 
           {/* Redirect root to login */}
           <Route path="/" element={<Navigate to="/login" replace />} />
+
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute requireOrganization>
+                <OrganizationLayout>
+                  <Settings />
+                </OrganizationLayout>
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

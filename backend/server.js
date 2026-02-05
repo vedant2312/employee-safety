@@ -10,6 +10,8 @@ import employeeRoutes from './routes/employee.route.js';
 import emergencyRoutes from './routes/emergency.route.js';
 import dashboardRoutes from './routes/dashboard.route.js';
 import exportRoutes from './routes/export.route.js';
+import organizationRoutes from './routes/organization.route.js';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -33,6 +35,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/organization', organizationRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/emergency', emergencyRoutes);
 app.use('/api/dashboard', dashboardRoutes);
