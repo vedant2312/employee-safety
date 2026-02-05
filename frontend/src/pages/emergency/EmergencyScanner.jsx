@@ -60,13 +60,18 @@ const EmergencyScanner = () => {
       return;
     }
 
+    // Optional: Ask for scanner's details
+    const scannerName = prompt('Your name (optional):');
+    const scannerPhone = prompt('Your phone number (optional, format: +91XXXXXXXXXX):');
+
     setSendingSOS(true);
 
     try {
       const payload = {
         location: location || {},
         scannedBy: {
-          // Could add optional fields here
+          name: scannerName || undefined,
+          phone: scannerPhone || undefined
         }
       };
 

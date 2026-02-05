@@ -1,5 +1,8 @@
 import Employee from '../models/employee.model.js';
 import Incident from '../models/incident.model.js';
+// import sendSMS from '../utils/sendSMS.js';
+import sendNotification from '../utils/sendNotification.js';
+
 
 // @desc    Get employee data by QR token (public - no auth)
 // @route   GET /api/emergency/:qrToken
@@ -68,10 +71,79 @@ export const triggerSOS = async (req, res) => {
       sosStatus: 'sent'
     });
 
-    // TODO: Send SMS/Email to emergency contacts (we'll do this later)
-    // For now, we'll just log it
+    // Send SMS to emergency contacts
+    const smsResults = [];
+    
+    if (employee.emergencyContacts && employee.emergencyContacts.length > 0) {
+      for (const contact of employee.emergencyContacts) {
+        if (contact.phone) {
+          // Build location info
+          let locationInfo = '';
+          if (location?.latitude && location?.longitude) {
+            const googleMapsLink = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
+            locationInfo = `\n📍 Location: ${googleMapsLink}`;
+            
+            // Add address if available
+            if (location.address) {
+              locationInfo += `\n🏢 Address: ${location.address}`;
+            }
+          } else if (location?.address) {
+            locationInfo = `\n🏢 Address: ${location.address}`;
+          } else {
+            locationInfo = '\n📍 Location: Not available';
+          }
+
+          // Build scanned by info
+          let scannedByInfo = '';
+          if (scannedBy?.name) {
+            scannedByInfo = `\n👤 Alert triggered by: ${scannedBy.name}`;
+            if (scannedBy.phone) {
+              scannedByInfo += ` (${scannedBy.phone})`;
+            }
+          }
+
+          // Medical info
+          const bloodGroup = employee.medicalInfo?.critical?.bloodGroup || 'Unknown';
+          const allergies = employee.medicalInfo?.critical?.allergies?.length > 0 
+            ? `\n⚠️ Allergies: ${employee.medicalInfo.critical.allergies.join(', ')}`
+            : '';
+          const conditions = employee.medicalInfo?.critical?.chronicConditions?.length > 0
+            ? `\n⚠️ Conditions: ${employee.medicalInfo.critical.chronicConditions.join(', ')}`
+            : '';
+
+          // Create emergency message
+          const message = `🚨 EMERGENCY ALERT 🚨
+
+${employee.name} (ID: ${employee.employeeId})
+${employee.organizationId.name}
+
+NEEDS IMMEDIATE HELP!
+
+🩸 Blood Group: ${bloodGroup}${allergies}${conditions}${locationInfo}${scannedByInfo}
+
+⏰ Time: ${new Date().toLocaleString()}
+
+Please respond immediately!`;
+
+          const result = await sendNotification(contact.phone, message);
+          smsResults.push({
+            contact: contact.name,
+            phone: contact.phone,
+            ...result
+          });
+        }
+      }
+    }
+
+    // Update incident with SMS results
+    incident.sosStatus = smsResults.some(r => r.success) ? 'sent' : 'failed';
+    await incident.save();
+
+    // Log for debugging
     console.log('SOS TRIGGERED FOR:', employee.name);
+    console.log('Location:', location);
     console.log('Emergency Contacts:', employee.emergencyContacts);
+    console.log('SMS Results:', smsResults);
     console.log('Incident ID:', incident._id);
 
     res.json({
@@ -81,7 +153,9 @@ export const triggerSOS = async (req, res) => {
         scannedAt: incident.scannedAt,
         sosStatus: incident.sosStatus
       },
-      alertsSent: employee.emergencyContacts.length
+      alertsSent: smsResults.filter(r => r.success).length,
+      totalContacts: employee.emergencyContacts.length,
+      smsResults: smsResults
     });
   } catch (error) {
     console.error(error);

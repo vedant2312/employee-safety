@@ -1,5 +1,9 @@
 import express from 'express';
 import dotenv from 'dotenv';
+// Load environment variables
+dotenv.config();
+
+
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -16,8 +20,10 @@ import organizationRoutes from './routes/organization.route.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables
-dotenv.config();
+console.log('Environment check:');
+console.log('TWILIO_ACCOUNT_SID:', process.env.TWILIO_ACCOUNT_SID ? 'Loaded ✓' : 'Missing ✗');
+console.log('TWILIO_AUTH_TOKEN:', process.env.TWILIO_AUTH_TOKEN ? 'Loaded ✓' : 'Missing ✗');
+console.log('TWILIO_PHONE_NUMBER:', process.env.TWILIO_PHONE_NUMBER ? 'Loaded ✓' : 'Missing ✗');
 
 // Connect to database
 connectDB();
