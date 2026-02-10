@@ -1,7 +1,6 @@
 import Employee from '../models/employee.model.js';
 import Incident from '../models/incident.model.js';
-// import sendSMS from '../utils/sendSMS.js';
-import sendNotification from '../utils/sendNotification.js';
+import { sendSMS } from '../utils/sendNotification.js';
 
 
 // @desc    Get employee data by QR token (public - no auth)
@@ -73,62 +72,41 @@ export const triggerSOS = async (req, res) => {
 
     // Send SMS to emergency contacts
     // Send notifications to emergency contacts
-    const notificationResults = [];
+    const smsResults = [];
 
     if (employee.emergencyContacts && employee.emergencyContacts.length > 0) {
       for (const contact of employee.emergencyContacts) {
         if (contact.phone) {
           // Build location info
-          let locationInfo = '';
+          let locationInfo = 'Location: Not available';
+
           if (location?.latitude && location?.longitude) {
-            const googleMapsLink = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
-            locationInfo = `\n📍 Location: ${googleMapsLink}`;
-            
-            if (location.address) {
-              locationInfo += `\n🏢 ${location.address}`;
-            }
+            locationInfo = `Location: https://maps.google.com/?q=${location.latitude},${location.longitude}`;
           } else if (location?.address) {
-            locationInfo = `\n🏢 Address: ${location.address}`;
+            locationInfo = `Location: ${location.address}`;
           }
 
-          // Build scanned by info
-          let scannedByInfo = '';
+          // Build sender info (person who scanned QR)
+          let senderInfo = 'Alerted By: Unknown';
+
           if (scannedBy?.name) {
-            scannedByInfo = `\n👤 Alert by: ${scannedBy.name}`;
-            if (scannedBy.phone) {
-              scannedByInfo += ` (${scannedBy.phone})`;
+            senderInfo = `Alerted By: ${scannedBy.name}`;
+            if (scannedBy?.phone) {
+              senderInfo += ` (${scannedBy.phone})`;
             }
           }
 
-          // Medical info
-          const bloodGroup = employee.medicalInfo?.critical?.bloodGroup || 'Unknown';
-          
-          let allergiesInfo = '';
-          if (employee.medicalInfo?.critical?.allergies?.length > 0) {
-            allergiesInfo = `\n⚠️ Allergies: ${employee.medicalInfo.critical.allergies.join(', ')}`;
-          }
-          
-          let conditionsInfo = '';
-          if (employee.medicalInfo?.critical?.chronicConditions?.length > 0) {
-            conditionsInfo = `\n⚠️ Conditions: ${employee.medicalInfo.critical.chronicConditions.join(', ')}`;
-          }
+          // Clean, SMS-friendly emergency message
+          const message = `EMERGENCY ALERT
+          ${employee.name} (ID:${employee.employeeId})
+          Needs immediate help.
+          ${senderInfo}
+          ${locationInfo}
+          Time: ${new Date().toLocaleString()}`;
 
-          // Create emergency message
-          const message = `🚨 EMERGENCY ALERT 🚨
 
-    ${employee.name} (ID: ${employee.employeeId})
-    ${employee.organizationId.name}
-
-    NEEDS IMMEDIATE HELP!
-
-    🩸 Blood Group: ${bloodGroup}${allergiesInfo}${conditionsInfo}${locationInfo}${scannedByInfo}
-
-    ⏰ ${new Date().toLocaleString()}
-
-    Please respond immediately!`;
-
-          const result = await sendNotification(contact.phone, message);
-          notificationResults.push({
+          const result = await sendSMS(contact.phone, message);
+          smsResults.push({
             contact: contact.name,
             phone: contact.phone,
             ...result
@@ -138,14 +116,14 @@ export const triggerSOS = async (req, res) => {
     }
 
     // Update incident with notification results
-    incident.sosStatus = notificationResults.some(r => r.success) ? 'sent' : 'failed';
+    incident.sosStatus = smsResults.some(r => r.success) ? 'sent' : 'failed';
     await incident.save();
 
     // Log for debugging
     console.log('SOS TRIGGERED FOR:', employee.name);
     console.log('Location:', location);
     console.log('Emergency Contacts:', employee.emergencyContacts);
-    console.log('Notification Results:', notificationResults);
+    console.log('Notification Results:', smsResults);
     console.log('Incident ID:', incident._id);
 
     res.json({
@@ -155,9 +133,9 @@ export const triggerSOS = async (req, res) => {
         scannedAt: incident.scannedAt,
         sosStatus: incident.sosStatus
       },
-      alertsSent: notificationResults.filter(r => r.success).length,
+      alertsSent: smsResults.filter(r => r.success).length,
       totalContacts: employee.emergencyContacts.length,
-      notificationResults: notificationResults
+      smsResults: smsResults
     });
   } catch (error) {
     console.error(error);
