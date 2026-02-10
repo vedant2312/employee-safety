@@ -12,7 +12,7 @@ import {
   uploadPhoto
 } from '../controllers/employee.controller.js';
 import { protect, isOrganization, isEmployee } from '../middlewares/auth.middleware.js';
-import upload from '../utils/upload.js';
+import { getUpload } from '../config/cloudinary.js';
 
 const router = express.Router();
 
@@ -20,11 +20,14 @@ const router = express.Router();
 router.post('/', protect, isOrganization, createEmployee);
 router.get('/', protect, isOrganization, getEmployees);
 router.get('/:id', protect, isOrganization, getEmployeeById);
-router.put('/:id', protect, updateEmployee); // Both org and employee can update
+router.put('/:id', protect, updateEmployee);
 router.delete('/:id', protect, isOrganization, deleteEmployee);
 
-// Photo upload
-router.post('/:id/photo', protect, upload.single('photo'), uploadPhoto);
+// Photo upload - using Cloudinary (use getUpload() to get configured multer instance)
+router.post('/:id/photo', protect, (req, res, next) => {
+  const upload = getUpload();
+  upload.single('photo')(req, res, next);
+}, uploadPhoto);
 
 // QR code routes
 router.get('/:id/qr', protect, isOrganization, generateQRCode);

@@ -18,17 +18,23 @@ const EmployeeProfile = () => {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+      logout();
+      navigate('/login');
+    };
 
-  const handlePhotoUpload = async (e) => {
+    const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     // Validate file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert('File size must be less than 5MB');
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file');
       return;
     }
 
@@ -44,16 +50,16 @@ const EmployeeProfile = () => {
         }
       });
 
-      // Update local employee state
+      // Update local employee state with Cloudinary URL
       setEmployee({
         ...employee,
-        profilePhoto: `http://localhost:5000${response.data.photoUrl}`
+        profilePhoto: response.data.photoUrl
       });
 
       alert('Photo uploaded successfully!');
     } catch (error) {
       console.error('Error uploading photo:', error);
-      alert('Failed to upload photo');
+      alert(error.response?.data?.message || 'Failed to upload photo');
     } finally {
       setUploadingPhoto(false);
     }
@@ -241,6 +247,14 @@ const EmployeeProfile = () => {
                       src={employee.profilePhoto}
                       alt={employee.name}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        console.error('Image failed to load:', employee.profilePhoto);
+                        e.target.onerror = null; // Prevent infinite loop
+                        e.target.style.display = 'none';
+                      }}
+                      onLoad={() => {
+                        console.log('Image loaded successfully:', employee.profilePhoto);
+                      }}
                     />
                   ) : (
                     <User className="w-10 h-10 text-primary-600" />

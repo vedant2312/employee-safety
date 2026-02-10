@@ -3,6 +3,7 @@ import Employee from '../models/employee.model.js';
 import Organization from '../models/organization.model.js';
 import generateQRToken from '../utils/generateQRToken.js';
 import QRCode from 'qrcode';
+import cloudinary from '../config/cloudinary.js';
 
 // @desc    Create employee (by organization)
 // @route   POST /api/employees
@@ -369,6 +370,9 @@ export const regenerateQRToken = async (req, res) => {
 // @access  Private (Organization or Employee themselves)
 export const uploadPhoto = async (req, res) => {
   try {
+    console.log('📸 Upload photo request received');
+    console.log('File:', req.file);
+
     if (!req.file) {
       return res.status(400).json({ message: 'Please upload a file' });
     }
@@ -389,9 +393,27 @@ export const uploadPhoto = async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Update profile photo URL
-    const photoUrl = `/uploads/${req.file.filename}`;
+    // Delete old photo from Cloudinary if exists
+    if (employee.profilePhoto && employee.profilePhoto.includes('cloudinary')) {
+      try {
+        const urlParts = employee.profilePhoto.split('/');
+        const filename = urlParts[urlParts.length - 1];
+        const publicId = `employee-safety/profiles/${filename.split('.')[0]}`;
+        
+        await cloudinary.uploader.destroy(publicId);
+        console.log('🗑️ Old photo deleted from Cloudinary:', publicId);
+      } catch (error) {
+        console.error('Error deleting old photo:', error);
+      }
+    }
+
+    // Get Cloudinary URL from uploaded file
+    const photoUrl = req.file.path;
+    
+    console.log('✅ Photo uploaded to Cloudinary:', photoUrl);
+
     employee.profilePhoto = photoUrl;
+    employee.lastUpdated = new Date();
     await employee.save();
 
     res.json({
@@ -399,7 +421,7 @@ export const uploadPhoto = async (req, res) => {
       photoUrl
     });
   } catch (error) {
-    console.error(error);
+    console.error('❌ Upload error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
