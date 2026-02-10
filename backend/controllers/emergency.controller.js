@@ -72,8 +72,9 @@ export const triggerSOS = async (req, res) => {
     });
 
     // Send SMS to emergency contacts
-    const smsResults = [];
-    
+    // Send notifications to emergency contacts
+    const notificationResults = [];
+
     if (employee.emergencyContacts && employee.emergencyContacts.length > 0) {
       for (const contact of employee.emergencyContacts) {
         if (contact.phone) {
@@ -83,20 +84,17 @@ export const triggerSOS = async (req, res) => {
             const googleMapsLink = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
             locationInfo = `\n📍 Location: ${googleMapsLink}`;
             
-            // Add address if available
             if (location.address) {
-              locationInfo += `\n🏢 Address: ${location.address}`;
+              locationInfo += `\n🏢 ${location.address}`;
             }
           } else if (location?.address) {
             locationInfo = `\n🏢 Address: ${location.address}`;
-          } else {
-            locationInfo = '\n📍 Location: Not available';
           }
 
           // Build scanned by info
           let scannedByInfo = '';
           if (scannedBy?.name) {
-            scannedByInfo = `\n👤 Alert triggered by: ${scannedBy.name}`;
+            scannedByInfo = `\n👤 Alert by: ${scannedBy.name}`;
             if (scannedBy.phone) {
               scannedByInfo += ` (${scannedBy.phone})`;
             }
@@ -104,29 +102,33 @@ export const triggerSOS = async (req, res) => {
 
           // Medical info
           const bloodGroup = employee.medicalInfo?.critical?.bloodGroup || 'Unknown';
-          const allergies = employee.medicalInfo?.critical?.allergies?.length > 0 
-            ? `\n⚠️ Allergies: ${employee.medicalInfo.critical.allergies.join(', ')}`
-            : '';
-          const conditions = employee.medicalInfo?.critical?.chronicConditions?.length > 0
-            ? `\n⚠️ Conditions: ${employee.medicalInfo.critical.chronicConditions.join(', ')}`
-            : '';
+          
+          let allergiesInfo = '';
+          if (employee.medicalInfo?.critical?.allergies?.length > 0) {
+            allergiesInfo = `\n⚠️ Allergies: ${employee.medicalInfo.critical.allergies.join(', ')}`;
+          }
+          
+          let conditionsInfo = '';
+          if (employee.medicalInfo?.critical?.chronicConditions?.length > 0) {
+            conditionsInfo = `\n⚠️ Conditions: ${employee.medicalInfo.critical.chronicConditions.join(', ')}`;
+          }
 
           // Create emergency message
           const message = `🚨 EMERGENCY ALERT 🚨
 
-${employee.name} (ID: ${employee.employeeId})
-${employee.organizationId.name}
+    ${employee.name} (ID: ${employee.employeeId})
+    ${employee.organizationId.name}
 
-NEEDS IMMEDIATE HELP!
+    NEEDS IMMEDIATE HELP!
 
-🩸 Blood Group: ${bloodGroup}${allergies}${conditions}${locationInfo}${scannedByInfo}
+    🩸 Blood Group: ${bloodGroup}${allergiesInfo}${conditionsInfo}${locationInfo}${scannedByInfo}
 
-⏰ Time: ${new Date().toLocaleString()}
+    ⏰ ${new Date().toLocaleString()}
 
-Please respond immediately!`;
+    Please respond immediately!`;
 
           const result = await sendNotification(contact.phone, message);
-          smsResults.push({
+          notificationResults.push({
             contact: contact.name,
             phone: contact.phone,
             ...result
@@ -135,15 +137,15 @@ Please respond immediately!`;
       }
     }
 
-    // Update incident with SMS results
-    incident.sosStatus = smsResults.some(r => r.success) ? 'sent' : 'failed';
+    // Update incident with notification results
+    incident.sosStatus = notificationResults.some(r => r.success) ? 'sent' : 'failed';
     await incident.save();
 
     // Log for debugging
     console.log('SOS TRIGGERED FOR:', employee.name);
     console.log('Location:', location);
     console.log('Emergency Contacts:', employee.emergencyContacts);
-    console.log('SMS Results:', smsResults);
+    console.log('Notification Results:', notificationResults);
     console.log('Incident ID:', incident._id);
 
     res.json({
@@ -153,9 +155,9 @@ Please respond immediately!`;
         scannedAt: incident.scannedAt,
         sosStatus: incident.sosStatus
       },
-      alertsSent: smsResults.filter(r => r.success).length,
+      alertsSent: notificationResults.filter(r => r.success).length,
       totalContacts: employee.emergencyContacts.length,
-      smsResults: smsResults
+      notificationResults: notificationResults
     });
   } catch (error) {
     console.error(error);
