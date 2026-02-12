@@ -12,6 +12,9 @@
   "author": "",
   "license": "ISC",
   "type": "module",
+  "engines": {
+    "node": "18.x"
+  },
   "devDependencies": {
     "nodemon": "^3.1.11"
   },
