@@ -310,8 +310,13 @@ export const generateQRCode = async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // QR code URL format: http://yourfrontend.com/emergency/{qrToken}
-    const qrUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/emergency/${employee.qrToken}`;
+    //  Use FRONTEND_URL env variable
+    // In development: http://localhost:5173
+    // In production: https://your-app.vercel.app
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const qrUrl = `${frontendUrl}/emergency/${employee.qrToken}`;
+
+    console.log('🔗 QR URL generated:', qrUrl);
 
     // Generate QR code as data URL (base64 image)
     const qrCodeDataUrl = await QRCode.toDataURL(qrUrl, {
@@ -326,7 +331,7 @@ export const generateQRCode = async (req, res) => {
     res.json({
       qrToken: employee.qrToken,
       qrUrl,
-      qrCodeImage: qrCodeDataUrl // This is a base64 image
+      qrCodeImage: qrCodeDataUrl
     });
   } catch (error) {
     console.error(error);

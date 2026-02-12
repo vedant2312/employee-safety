@@ -1,8 +1,6 @@
-// ⚠️ CRITICAL: Load dotenv FIRST
 import dotenv from 'dotenv';
 dotenv.config();
 
-// Now import everything else
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -20,16 +18,6 @@ import organizationRoutes from './routes/organization.route.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Debug - check if env vars are loaded
-console.log('\n=== Environment Variables Check ===');
-console.log('TWILIO_ACCOUNT_SID:', process.env.TWILIO_ACCOUNT_SID ? 'Loaded ✓' : 'Missing ✗');
-console.log('TWILIO_AUTH_TOKEN:', process.env.TWILIO_AUTH_TOKEN ? 'Loaded ✓' : 'Missing ✗');
-console.log('TWILIO_PHONE_NUMBER:', process.env.TWILIO_PHONE_NUMBER ? 'Loaded ✓' : 'Missing ✗');
-console.log('CLOUDINARY_CLOUD_NAME:', process.env.CLOUDINARY_CLOUD_NAME ? 'Loaded ✓' : 'Missing ✗');
-console.log('CLOUDINARY_API_KEY:', process.env.CLOUDINARY_API_KEY ? 'Loaded ✓' : 'Missing ✗');
-console.log('CLOUDINARY_API_SECRET:', process.env.CLOUDINARY_API_SECRET ? 'Loaded ✓' : 'Missing ✗');
-console.log('====================================\n');
-
 // Configure Cloudinary AFTER environment variables are loaded
 configureCloudinary();
 
@@ -44,8 +32,28 @@ connectDB();
 // Initialize Express
 const app = express();
 
-// Middleware
-app.use(cors());
+// CORS - Allow both local and production frontend
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  process.env.FRONTEND_URL,
+].filter(Boolean); // Remove undefined values
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('Blocked by CORS:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -62,7 +70,11 @@ app.use('/api/export', exportRoutes);
 
 // Test route
 app.get('/api/test', (req, res) => {
-  res.json({ message: 'Server is running!' });
+  res.json({ 
+    message: 'Server is running!',
+    environment: process.env.NODE_ENV,
+    frontendUrl: process.env.FRONTEND_URL
+  });
 });
 
 // Error handler (404)
@@ -73,5 +85,7 @@ app.use((req, res) => {
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}\n`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📌 Environment: ${process.env.NODE_ENV}`);
+  console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
 });
